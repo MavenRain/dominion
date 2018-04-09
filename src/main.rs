@@ -15,13 +15,17 @@ enum Action {
   TrashUpToFourCardsFromHand,
   EachOtherPlayerDrawsCard,
   PutCardFromDiscardOntoDeck,
-  DrawToSevenCardsDiscardingDrawnActionsAtWillAndDiscardingThemAfterward
+  DrawToSevenCardsDiscardingDrawnActionsAtWillAndDiscardingThemAfterward,
+  GainCoinIfSilverPlayed,
+  TrashTreasureForTreasureCosting(i8),
+  TrashCopper
 }
 
 enum Attack {
   Curse,
   RevealTopTwoOfDeckAndTrashRevealedNonCopperTreasureThenDiscardRest,
-  RevealVictoryCardFromHandAndPutOntoDeckIfThere
+  RevealVictoryCardFromHandAndPutOntoDeckIfThere,
+  DiscardDownToThreeCards
 }
 
 trait Card {
@@ -270,7 +274,63 @@ impl Card for Market {
   fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCards(1), Action::GainActions(1), Action::GainBuys(1), Action::GainCoins(1)]) }
   fn value(& self) -> i8 { 0 }
   fn attack(& self) -> Option<Attack> { None }
-} 
+}
+
+struct Merchant;
+impl Card for Merchant {
+  fn cost(& self) -> i8 { 3 }
+  fn points(& self) -> i8 { 0 }
+  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCoinIfSilverPlayed]) }
+  fn value(& self) -> i8 { 0 }
+  fn attack(& self) -> Option<Attack> { None }
+}
+
+struct Militia;
+impl Card for Militia {
+  fn cost(& self) -> i8 { 4 }
+  fn points(& self) -> i8 { 0 }
+  fn action(& self) -> Option<Vec<Action>> { None }
+  fn value(& self) -> i8 { 0 }
+  fn attack(& self) -> Option<Attack> { Some(Attack::DiscardDownToThreeCards) }
+}
+
+struct Mine {
+  treasure: Card
+}
+impl Card for Mine {
+  fn cost(& self) -> i8 { 5 }
+  fn points(& self) -> i8 { 0 }
+  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::TrashTreasureForTreasureCosting(self.treasure.cost() + 3)]) }
+  fn value(& self) -> i8 { 0 }
+  fn attack(& self) -> Option<Attack> { None }
+}
+
+struct Moat;
+impl Card for Moat {
+  fn cost(& self) -> i8 { 2 }
+  fn points(& self) -> i8 { 0 }
+  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCards(2)]) }
+  fn value(& self) -> i8 { 0 }
+  fn attack(& self) -> Option<Attack> { None }
+}
+
+struct Moneylender;
+impl Card for Moneylender {
+  fn cost(& self) -> i8 { 4 }
+  fn points(& self) -> i8 { 0 }
+  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::TrashCopper, Action::GainCoins(3)]) }
+  fn value(& self) -> i8 { 0 }
+  fn attack(& self) -> Option<Attack> { None }
+}
+
+struct Silver;
+impl Card for Silver {
+  fn cost(& self) -> i8 { 3 }
+  fn points(& self) -> i8 { 0 }
+  fn action(& self) -> Option<Vec<Action>> { None }
+  fn value(& self) -> i8 { 2 }
+  fn attack(& self) -> Option<Attack> { None }
+}
 
 fn main() {
     println!("Hello, world!");
