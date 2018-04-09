@@ -332,6 +332,13 @@ impl Card for Silver {
   fn attack(& self) -> Option<Attack> { None }
 }
 
+struct State {
+  points: i8,
+  hand: Vec<Box<Card>>,
+  discard: Vec<Box<Card>>,
+  deck: Vec<Box<Card>>
+}
+
 fn main() {
     println!("Hello, world!");
 }
