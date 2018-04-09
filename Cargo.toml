@@ -1,0 +1,6 @@
+[package]
+name = "dominion"
+version = "0.1.0"
+authors = ["oobi <not_root@expedia.com>"]
+
+[dependencies]
