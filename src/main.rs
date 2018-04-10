@@ -569,7 +569,7 @@ fn play_action_from_hand_twice(state: State, card: Card) -> State {
     }
   }
 }
- 
+
 fn main() {
   let cards = vec![copper(), silver(), village()];  
   println!("Hello, world!");
