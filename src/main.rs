@@ -1,3 +1,4 @@
+#[derive(Clone, PartialEq, Eq)]
 enum Action {
   GainCards(i8),
   GainCardUpToCost(i8),
@@ -21,6 +22,7 @@ enum Action {
   TrashCopper
 }
 
+#[derive(Clone, PartialEq, Eq)]
 enum Attack {
   Curse,
   RevealTopTwoOfDeckAndTrashRevealedNonCopperTreasureThenDiscardRest,
@@ -28,317 +30,547 @@ enum Attack {
   DiscardDownToThreeCards
 }
 
-trait Card {
-  fn cost(& self) -> i8;
-  fn points(& self) -> i8;
-  fn action(& self) -> Option<Vec<Action>>;
-  fn value(& self) -> i8;
-  fn attack(& self) -> Option<Attack>;
+#[derive(Clone)]
+struct Card {
+  cost: i8,
+  points: i8,
+  actions: Option<Vec<Action>>,
+  value: i8,
+  attack: Option<Attack>
 }
 
-struct Gold;
-impl Card for Gold {
-  fn cost(& self) -> i8 { 6 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { None }
-  fn value(& self) -> i8 { 3 }
-  fn attack(& self) -> Option<Attack> { None }
+fn action_vec_compare(va: &[Action], vb: &[Action]) -> bool {
+    (va.len() == vb.len()) &&
+    va.iter().zip(vb).all(|(a,b)| * a == * b)
 }
 
-struct Estate;
-impl Card for Estate {
-  fn cost(& self) -> i8 { 2 }
-  fn points(& self) -> i8 { 1 }
-  fn action(& self) -> Option<Vec<Action>> { None }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+impl PartialEq for Card {
+  fn eq(& self, other: & Card) -> bool {
+    self.cost == other.cost &&
+    self.points == other.points &&
+    match (self.actions.clone(), other.actions.clone()) {
+      (None, None) => true,
+      (Some(selfactions), Some(otheractions)) => action_vec_compare(& selfactions, & otheractions),
+      _ => false
+    } &&
+    self.value == other.value &&
+    match (self.attack.clone(), other.attack.clone()) {
+      (None, None) => true,
+      (Some(selfattack), Some(otherattack)) => selfattack == otherattack,
+      _ => false
+    }
+  }
 }
 
-struct Province;
-impl Card for Province {
-  fn cost(& self) -> i8 { 8 }
-  fn points(& self) -> i8 { 6 }
-  fn action(& self) -> Option<Vec<Action>> { None }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+impl Eq for Card {}
+
+fn gold() -> Card {
+  Card {
+    cost: 6,
+    points: 0,
+    actions: None,
+    value: 3,
+    attack: None
+  }
+}  
+
+fn estate() -> Card {
+  Card {
+    cost: 2,
+    points: 1,
+    actions: None,
+    value: 0,
+    attack: None
+  }
 }
 
-struct Gardens {
-  cards: i8
-}
-impl Card for Gardens {
-  fn cost(& self) -> i8 { 4 }
-  fn points(& self) -> i8 { self.cards / 10 }
-  fn action(& self) -> Option<Vec<Action>> { None }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
-}
-
-struct Duchy;
-impl Card for Duchy {
-  fn cost(& self) -> i8 { 5 }
-  fn points(& self) -> i8 { 3 }
-  fn action(& self) -> Option<Vec<Action>> { None }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn province() -> Card {
+  Card {
+    cost: 8,
+    points: 6,
+    actions: None,
+    value: 0,
+    attack: None
+  }
 }
 
-struct Workshop;
-impl Card for Workshop {
-  fn cost(& self) -> i8 { 3 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCardUpToCost(4)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn gardens(cards: i8) -> Card {
+  Card {
+    cost: 4,
+    points: cards / 10,
+    actions: None,
+    value: 0,
+    attack: None
+  }
 }
 
-struct Witch;
-impl Card for Witch {
-  fn cost(& self) -> i8 { 5 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCards(2)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { Some(Attack::Curse) }
+fn duchy() -> Card {
+  Card {
+    cost: 5,
+    points: 3,
+    actions: None,
+    value: 0,
+    attack: None
+  }
 }
 
-struct Village;
-impl Card for Village {
-  fn cost(& self) -> i8 { 3 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCards(1), Action::GainActions(2)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn workshop() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    actions: Some(vec![Action::GainCardUpToCost(4)]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Curse;
-impl Card for Curse {
-  fn cost(& self) -> i8 { 0 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { None }
-  fn value(& self) -> i8 { -1 }
-  fn attack(& self) -> Option<Attack> { None }
+fn witch() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    actions: Some(vec![Action::GainCards(2)]),
+    value: 0,
+    attack: Some(Attack::Curse)
+  }
 }
 
-struct Vassal;
-impl Card for Vassal {
-  fn cost(& self) -> i8 { 3 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCoins(2), Action::DiscardTopCardWithOptionToPlayIfAction]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn village() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    actions: Some(vec![Action::GainCards(1), Action::GainActions(2)]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct ThroneRoom;
-impl Card for ThroneRoom {
-  fn cost(& self) -> i8 { 4 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::PlayActionFromHandTwice]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn curse() -> Card {
+  Card {
+    cost: 0,
+    points: -1,
+    actions: None,
+    value: 0,
+    attack: None
+  }
 }
 
-struct Smithy;
-impl Card for Smithy {
-  fn cost(& self) -> i8 { 4 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCards(3)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn vassal() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    actions: Some(vec![Action::GainCoins(2), Action::DiscardTopCardWithOptionToPlayIfAction]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Remodel {
-  card: Card
-}
-impl Card for Remodel {
-  fn cost(& self) -> i8 { 4 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::TrashCardForCardCosting(self.card.cost() + 2)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
-}
-
-struct Poacher {
-  empty_supply_piles: i8
-}
-impl Card for Poacher {
-  fn cost(& self) -> i8 { 4 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCards(1), Action::GainActions(1), Action::GainCoins(1), Action::DiscardCardsForEmptySupplyPiles(self.empty_supply_piles)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn throne_room() -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    actions: Some(vec![Action::PlayActionFromHandTwice]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Artisan;
-impl Card for Artisan {
-  fn cost(& self) -> i8 { 6 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCardToHandCosting(5), Action::PutCardFromHandOntoDeck]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn smithy() -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    actions: Some(vec![Action::GainCards(3)]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Bandit;
-impl Card for Bandit {
-  fn cost(& self) -> i8 { 5 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCoins(1)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { Some(Attack::RevealTopTwoOfDeckAndTrashRevealedNonCopperTreasureThenDiscardRest) }
+fn remodel(card: Card) -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    actions: Some(vec![Action::TrashCardForCardCosting(card.cost + 2)]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Bureaucrat;
-impl Card for Bureaucrat {
-  fn cost(& self) -> i8 { 4 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::PutCardFromHandOntoDeck]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { Some(Attack::RevealVictoryCardFromHandAndPutOntoDeckIfThere) }
+fn poacher(empty_supply_piles: i8) -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    actions: Some(vec![Action::GainCards(1), Action::GainActions(1), Action::GainCoins(1), Action::DiscardCardsForEmptySupplyPiles(empty_supply_piles)]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Cellar;
-impl Card for Cellar {
-  fn cost(& self) -> i8 { 2 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainActions(1), Action::DiscardAnyNumberOfCardsAndThenDrawThatMany]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn artisan() -> Card {
+  Card {
+    cost: 6,
+    points: 0,
+    actions: Some(vec![Action::GainCardToHandCosting(5), Action::PutCardFromHandOntoDeck]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Chapel;
-impl Card for Chapel {
-  fn cost(& self) -> i8 { 2 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::TrashUpToFourCardsFromHand]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn bandit() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    actions: Some(vec![Action::GainCoins(1)]),
+    value: 0,
+    attack: Some(Attack::RevealTopTwoOfDeckAndTrashRevealedNonCopperTreasureThenDiscardRest)
+  }
 }
 
-struct CouncilRoom;
-impl Card for CouncilRoom {
-  fn cost(& self) -> i8 { 5 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCards(4), Action::GainBuys(1), Action::EachOtherPlayerDrawsCard]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn bureaucrat() -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    actions: Some(vec![Action::PutCardFromHandOntoDeck]),
+    value: 0,
+    attack: Some(Attack::RevealVictoryCardFromHandAndPutOntoDeckIfThere)
+  }
 }
 
-struct Copper;
-impl Card for Copper {
-  fn cost(& self) -> i8 { 0 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { None }
-  fn value(& self) -> i8 { 1 }
-  fn attack(& self) -> Option<Attack> { None }
+fn cellar() -> Card {
+  Card {
+    cost: 2,
+    points: 0,
+    actions: Some(vec![Action::GainActions(1), Action::DiscardAnyNumberOfCardsAndThenDrawThatMany]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Festival;
-impl Card for Festival {
-  fn cost(& self) -> i8 { 5 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainActions(2), Action::GainBuys(1), Action::GainCoins(2)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn chapel() -> Card {
+  Card {
+    cost: 2,
+    points: 0,
+    actions: Some(vec![Action::TrashUpToFourCardsFromHand]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Harbinger;
-impl Card for Harbinger {
-  fn cost(& self) -> i8 { 3 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::PutCardFromDiscardOntoDeck]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn council_room() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    actions: Some(vec![Action::GainCards(4), Action::GainBuys(1), Action::EachOtherPlayerDrawsCard]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Laboratory;
-impl Card for Laboratory {
-  fn cost(& self) -> i8 { 5 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCards(2), Action::GainActions(1)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn copper() -> Card {
+  Card {
+    cost: 0,
+    points: 0,
+    actions: None,
+    value: 1,
+    attack: None
+  }
 }
 
-struct Library;
-impl Card for Library {
-  fn cost(& self) -> i8 { 5 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::DrawToSevenCardsDiscardingDrawnActionsAtWillAndDiscardingThemAfterward]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn festival() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    actions: Some(vec![Action::GainActions(2), Action::GainBuys(1), Action::GainCoins(2)]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Market;
-impl Card for Market {
-  fn cost(& self) -> i8 { 5 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCards(1), Action::GainActions(1), Action::GainBuys(1), Action::GainCoins(1)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn harbinger() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    actions: Some(vec![Action::PutCardFromDiscardOntoDeck]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Merchant;
-impl Card for Merchant {
-  fn cost(& self) -> i8 { 3 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCoinIfSilverPlayed]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn laboratory() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    actions: Some(vec![Action::GainCards(2), Action::GainActions(1)]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Militia;
-impl Card for Militia {
-  fn cost(& self) -> i8 { 4 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { None }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { Some(Attack::DiscardDownToThreeCards) }
+fn library() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    actions: Some(vec![Action::DrawToSevenCardsDiscardingDrawnActionsAtWillAndDiscardingThemAfterward]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Mine {
-  treasure: Card
-}
-impl Card for Mine {
-  fn cost(& self) -> i8 { 5 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::TrashTreasureForTreasureCosting(self.treasure.cost() + 3)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
-}
-
-struct Moat;
-impl Card for Moat {
-  fn cost(& self) -> i8 { 2 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::GainCards(2)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn market() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    actions: Some(vec![Action::GainCards(1), Action::GainActions(1), Action::GainBuys(1), Action::GainCoins(1)]),
+    value: 0, 
+    attack: None
+  }
 }
 
-struct Moneylender;
-impl Card for Moneylender {
-  fn cost(& self) -> i8 { 4 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { Some(vec![Action::TrashCopper, Action::GainCoins(3)]) }
-  fn value(& self) -> i8 { 0 }
-  fn attack(& self) -> Option<Attack> { None }
+fn merchant() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    actions: Some(vec![Action::GainCoinIfSilverPlayed]),
+    value: 0,
+    attack: None
+  }
 }
 
-struct Silver;
-impl Card for Silver {
-  fn cost(& self) -> i8 { 3 }
-  fn points(& self) -> i8 { 0 }
-  fn action(& self) -> Option<Vec<Action>> { None }
-  fn value(& self) -> i8 { 2 }
-  fn attack(& self) -> Option<Attack> { None }
+fn militia() -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    actions: None,
+    value: 0,
+    attack: Some(Attack::DiscardDownToThreeCards)
+  }
+}
+
+fn mine(treasure: Card) -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    actions: Some(vec![Action::TrashTreasureForTreasureCosting(treasure.cost + 3)]),
+    value: 0,
+    attack: None
+  }
+}
+
+fn moat() -> Card {
+  Card {
+    cost: 2,
+    points: 0,
+    actions: Some(vec![Action::GainCards(2)]),
+    value: 0,
+    attack: None
+  }
+}
+
+fn moneylender() -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    actions: Some(vec![Action::TrashCopper, Action::GainCoins(3)]),
+    value: 0,
+    attack: None
+  }
+}
+
+fn silver() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    actions: None,
+    value: 2,
+    attack: None
+  }
 }
 
 struct State {
   points: i8,
-  hand: Vec<Box<Card>>,
-  discard: Vec<Box<Card>>,
-  deck: Vec<Box<Card>>
+  hand: Vec<Card>,
+  deck: Vec<Card>,
+  discard: Vec<Card>,
+  actions_remaining: i8,
+  extra_coins: i8,
+  purchases_remaining: i8
+}
+
+fn gain_cards(state: State, cards: usize) -> State {
+  State {
+    points: state.points,
+    hand: {
+      let mut original_hand = state.hand;
+      original_hand.extend(state.deck.clone().into_iter().take(cards).collect::<Vec<Card>>());
+      original_hand
+    },
+    deck: state.deck.into_iter().skip(cards).collect(),
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn gain_card_up_to_cost(state: State, card: Card, cost: i8) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: if card.cost > cost { state.discard } else {
+      let mut new_discard = state.discard;
+      new_discard.extend(vec![card]);
+      new_discard
+    },
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn lose_action(state: State) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining - 1,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn gain_actions(state: State, actions: i8) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining + actions,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn lose_extra_coins(state: State) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: 0,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn gain_extra_coins(state: State, coins: i8) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins + coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn complete_purchase(state: State) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining - 1
+  }
+}
+
+fn add_purchases(state: State, purchases: i8) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining + purchases
+  }
+}
+
+fn gain_silver_onto_deck(state: State) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: {
+      let mut new_deck = state.deck;
+      new_deck.extend(vec![silver()]);
+      new_deck
+    },
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn discard_top_card_with_option_to_play_if_action(state: State) -> (State, Option<Card>) {
+  (State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck.clone().into_iter().skip(1).collect::<Vec<Card>>(),
+    discard: {
+      let mut new_discard = state.discard;
+      new_discard.extend(state.deck.clone().into_iter().take(1).collect::<Vec<Card>>());
+      new_discard
+    },
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  },
+    match state.deck.first() {
+      Some(top_card) if top_card.actions.is_some() => Some(top_card.to_owned()),
+      _ => None
+    }
+  )
+}
+
+fn play_action_from_hand_twice(state: State, card: Card) -> State {
+  match state.hand.clone().into_iter().find(|x| x.to_owned() == card) {
+    None => state,
+    _ => {
+      let new_card = Card {
+        cost: card.cost,
+        points: card.points,
+        actions: {
+          if let Some(mut new_actions) = card.actions.clone() {
+            let new_actions_clone = new_actions.clone();
+            new_actions.extend(new_actions_clone);
+            Some(new_actions)
+          }
+          else { card.actions.clone() }
+        },
+        value: card.value,
+        attack: card.attack.clone()
+      };
+      State {
+        points: state.points,
+        hand: {
+              let mut new_hand = state.hand.clone().into_iter().filter(|x| x.to_owned() != card).collect::<Vec<Card>>();
+              new_hand.extend(vec![new_card]);
+              new_hand
+        },
+        deck: state.deck,
+        discard: state.discard,
+        actions_remaining: state.actions_remaining,
+        extra_coins: state.extra_coins,
+        purchases_remaining: state.purchases_remaining  
+      }
+    }
+  }
 }
 
 fn main() {
-    println!("Hello, world!");
+  let cards = vec![copper(), silver(), village()];  
+  println!("Hello, world!");
 }
