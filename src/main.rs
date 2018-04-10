@@ -1,4 +1,4 @@
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 enum Action {
   GainCards(i8),
   GainCardUpToCost(i8),
@@ -22,7 +22,7 @@ enum Action {
   TrashCopper
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 enum Attack {
   Curse,
   RevealTopTwoOfDeckAndTrashRevealedNonCopperTreasureThenDiscardRest,
@@ -38,6 +38,31 @@ struct Card {
   value: i8,
   attack: Option<Attack>
 }
+
+fn action_vec_compare(va: &[Action], vb: &[Action]) -> bool {
+    (va.len() == vb.len()) &&
+    va.iter().zip(vb).all(|(a,b)| * a == * b)
+}
+
+impl PartialEq for Card {
+  fn eq(& self, other: & Card) -> bool {
+    self.cost == other.cost &&
+    self.points == other.points &&
+    match (self.actions.clone(), other.actions.clone()) {
+      (None, None) => true,
+      (Some(selfactions), Some(otheractions)) => action_vec_compare(& selfactions, & otheractions),
+      _ => false
+    } &&
+    self.value == other.value &&
+    match (self.attack.clone(), other.attack.clone()) {
+      (None, None) => true,
+      (Some(selfattack), Some(otherattack)) => selfattack == otherattack,
+      _ => false
+    }
+  }
+}
+
+impl Eq for Card {}
 
 fn gold() -> Card {
   Card {
@@ -363,19 +388,25 @@ struct State {
   points: i8,
   hand: Vec<Card>,
   deck: Vec<Card>,
-  discard: Vec<Card>
+  discard: Vec<Card>,
+  actions_remaining: i8,
+  extra_coins: i8,
+  purchases_remaining: i8
 }
 
 fn gain_cards(state: State, cards: usize) -> State {
   State {
     points: state.points,
     hand: {
-      let mut originalHand = state.hand;
-      originalHand.extend(state.deck[..].to_vec().into_iter().take(cards).collect::<Vec<Card>>());
-      originalHand
+      let mut original_hand = state.hand;
+      original_hand.extend(state.deck.clone().into_iter().take(cards).collect::<Vec<Card>>());
+      original_hand
     },
     deck: state.deck.into_iter().skip(cards).collect(),
-    discard: state.discard
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
   }
 }
 
@@ -388,10 +419,157 @@ fn gain_card_up_to_cost(state: State, card: Card, cost: i8) -> State {
       let mut new_discard = state.discard;
       new_discard.extend(vec![card]);
       new_discard
-    }
+    },
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
   }
 }
 
+fn lose_action(state: State) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining - 1,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn gain_actions(state: State, actions: i8) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining + actions,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn lose_extra_coins(state: State) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: 0,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn gain_extra_coins(state: State, coins: i8) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins + coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn complete_purchase(state: State) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining - 1
+  }
+}
+
+fn add_purchases(state: State, purchases: i8) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining + purchases
+  }
+}
+
+fn gain_silver_onto_deck(state: State) -> State {
+  State {
+    points: state.points,
+    hand: state.hand,
+    deck: {
+      let mut new_deck = state.deck;
+      new_deck.extend(vec![silver()]);
+      new_deck
+    },
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn discard_top_card_with_option_to_play_if_action(state: State) -> (State, Option<Card>) {
+  (State {
+    points: state.points,
+    hand: state.hand,
+    deck: state.deck.clone().into_iter().skip(1).collect::<Vec<Card>>(),
+    discard: {
+      let mut new_discard = state.discard;
+      new_discard.extend(state.deck.clone().into_iter().take(1).collect::<Vec<Card>>());
+      new_discard
+    },
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  },
+    match state.deck.first() {
+      Some(top_card) if top_card.actions.is_some() => Some(top_card.to_owned()),
+      _ => None
+    }
+  )
+}
+
+fn play_action_from_hand_twice(state: State, card: Card) -> State {
+  match state.hand.clone().into_iter().find(|x| x.to_owned() == card) {
+    None => state,
+    _ => {
+      let new_card = Card {
+        cost: card.cost,
+        points: card.points,
+        actions: {
+          if let Some(mut new_actions) = card.actions.clone() {
+            let new_actions_clone = new_actions.clone();
+            new_actions.extend(new_actions_clone);
+            Some(new_actions)
+          }
+          else { card.actions.clone() }
+        },
+        value: card.value,
+        attack: card.attack.clone()
+      };
+      State {
+        points: state.points,
+        hand: {
+              let mut new_hand = state.hand.clone().into_iter().filter(|x| x.to_owned() != card).collect::<Vec<Card>>();
+              new_hand.extend(vec![new_card]);
+              new_hand
+        },
+        deck: state.deck,
+        discard: state.discard,
+        actions_remaining: state.actions_remaining,
+        extra_coins: state.extra_coins,
+        purchases_remaining: state.purchases_remaining  
+      }
+    }
+  }
+}
+ 
 fn main() {
   let cards = vec![copper(), silver(), village()];  
   println!("Hello, world!");
