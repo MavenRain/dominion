@@ -198,7 +198,8 @@ fn poacher(empty_supply_piles: i8) -> Card {
   Card {
     cost: 4,
     points: 0,
-    actions: Some(vec![Action::GainCards(1), Action::GainActions(1), Action::GainCoins(1), Action::DiscardCardsForEmptySupplyPiles(empty_supply_piles)]),
+    actions: Some(vec![Action::GainCards(1), Action::GainActions(1), Action::GainCoins(1),
+      Action::DiscardCardsForEmptySupplyPiles(empty_supply_piles)]),
     value: 0,
     attack: None
   }
@@ -552,7 +553,8 @@ fn play_action_from_hand_twice(state: State, card: Card) -> State {
       };
       State {
         hand: {
-              let mut new_hand = state.hand.clone().into_iter().filter(|x| x.to_owned() != card).collect::<Vec<Card>>();
+              let mut new_hand = state.hand.clone().into_iter().filter(|x| x.to_owned() !=
+                card).collect::<Vec<Card>>();
               new_hand.extend(vec![new_card]);
               new_hand
         },
