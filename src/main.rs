@@ -585,6 +585,72 @@ fn trash_card_for_card_costing(state: State, trash_card: Card, new_card: Card, c
     }
   }
 }
+
+fn discard_cards_for_empty_supply_piles(state: State, empty_supply_piles: usize) -> State {
+  State {
+    hand: state.hand.clone().into_iter().skip(empty_supply_piles).collect::<Vec<Card>>(),
+    deck: state.deck,
+    discard: {
+      let mut new_discard = state.discard;
+      new_discard.extend(state.hand.into_iter().take(empty_supply_piles).collect::<Vec<Card>>());
+      new_discard
+    },
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn gain_card_to_hand_costing(state: State, card: Card, cost: i8) -> State {
+  State {
+    hand: if card.cost > cost { state.hand } else {
+      let mut new_hand = state.hand;
+      new_hand.extend(vec![card]);
+      new_hand
+    },
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn put_card_from_hand_onto_deck(state: State, card: Card) -> State {
+  if ! state.hand.contains(& card) { state } else {
+    State {
+      hand: state.hand.into_iter().filter(|x| x.to_owned() != card).collect::<Vec<Card>>(),
+      deck: {
+        let mut new_deck = state.deck;
+        new_deck.extend(vec![card]);
+        new_deck
+      },
+      discard: state.discard,
+      actions_remaining: state.actions_remaining,
+      extra_coins: state.extra_coins,
+      purchases_remaining: state.purchases_remaining
+    }
+  }
+}
+
+fn discard_any_number_of_cards_and_then_draw_that_many(state: State, cards: usize) -> State {
+  State {
+    hand: {
+      let mut new_hand = state.hand.clone();
+      new_hand.extend(state.deck.clone().into_iter().take(cards).collect::<Vec<Card>>());
+      new_hand
+    },
+    deck: state.deck.into_iter().skip(cards).collect::<Vec<Card>>(),
+    discard: {
+      let mut new_discard = state.discard;
+      new_discard.extend(state.hand.into_iter().take(cards).collect::<Vec<Card>>());
+      new_discard
+    },
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
  
 fn main() {
   let state = State {
