@@ -394,6 +394,17 @@ struct State {
   purchases_remaining: i8
 }
 
+impl State {
+  fn summarize(& self) {
+    println!("hand: {:?}", self.hand);
+    println!("deck: {:?}", self.deck);
+    println!("discard: {:?}", self.discard);
+    println!("actions remaining: {}", self.actions_remaining);
+    println!("extra coins: {}", self.extra_coins);
+    println!("purchases remaining: {}", self.purchases_remaining);
+  }
+}
+
 fn gain_cards(state: State, cards: usize) -> State {
   State {
     hand: {
@@ -557,7 +568,32 @@ fn play_action_from_hand_twice(state: State, card: Card) -> State {
   }
 }
 
+fn trash_card_for_card_costing(state: State, trash_card: Card, new_card: Card, cost: i8) -> State {
+  if new_card.cost > cost { state }
+  else {
+    State {
+      hand: {
+        let mut new_hand = state.hand.into_iter().filter(|x| x.to_owned() != trash_card).collect::<Vec<Card>>();
+        new_hand.extend(vec![new_card]);
+        new_hand
+      },
+      deck: state.deck,
+      discard: state.discard,
+      actions_remaining: state.actions_remaining,
+      extra_coins: state.extra_coins,
+      purchases_remaining: state.purchases_remaining
+    }
+  }
+}
+ 
 fn main() {
-  let cards = vec![copper(), silver(), village()];
-  println!("Hello, world!");
+  let state = State {
+    hand: vec![copper(), duchy(), silver(), village()],
+    deck: vec![],
+    discard: vec![],
+    actions_remaining: 0,
+    extra_coins: 0,
+    purchases_remaining: 0
+  };
+  state.summarize();  
 }
