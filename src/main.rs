@@ -48,12 +48,11 @@ impl PartialEq for Card {
   fn eq(& self, other: & Card) -> bool {
     self.cost == other.cost &&
     self.points == other.points &&
-    //match (self.actions.clone(), other.actions.clone()) {
-    //  (None, None) => true,
-    //  (Some(selfactions), Some(otheractions)) => action_vec_compare(& selfactions, & otheractions),
-    //  _ => false
-    //} &&
-    self.actions.clone().flat_map(|x| other.actions.clone().map(|y| action_vec_compare(& x, & y))) &&
+    match (self.actions.clone(), other.actions.clone()) {
+      (None, None) => true,
+      (Some(selfactions), Some(otheractions)) => action_vec_compare(& selfactions, & otheractions),
+      _ => false
+    } &&
     self.value == other.value &&
     match (self.attack.clone(), other.attack.clone()) {
       (None, None) => true,
