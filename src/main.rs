@@ -669,6 +669,21 @@ impl Action {
       purchases_remaining: state.purchases_remaining
     }
   }
+
+  fn each_player_draws_card(states: Vec<State>) -> Vec<State> {
+    states.into_iter().map(|x| State {
+      hand: {
+        let mut new_hand = x.hand;
+        new_hand.extend(x.deck.clone().into_iter().take(1));
+        new_hand
+      },
+      deck: x.deck.into_iter().skip(1).collect::<Vec<Card>>(),
+      discard: x.discard,
+      actions_remaining: x.actions_remaining,
+      extra_coins: x.extra_coins,
+      purchases_remaining: x.purchases_remaining
+    }).collect::<Vec<State>>()
+  }
 }
 
 
