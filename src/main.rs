@@ -446,7 +446,7 @@ fn gain_card_up_to_cost(state: State, card: Card, cost: i8) -> State {
     deck: state.deck,
     discard: if card.cost > cost { state.discard } else {
       let mut new_discard = state.discard;
-      new_discard.extend(vec![card]);
+      new_discard.push(card);
       new_discard
     },
     actions_remaining: state.actions_remaining,
@@ -757,6 +757,34 @@ fn trash_copper(state: State) -> State {
     },
     deck: state.deck,
     discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn draw_to_seven_cards_discarding_drawn_actions_at_will_then_discarding_them(
+  state: State, action_cards_to_discard: Vec<Card>) -> State {
+  State {
+    hand: state.hand.clone(),
+    deck: state.deck.clone().into_iter().filter(|x| {
+      let mut new_hand = state.hand.clone();
+      new_hand.extend(state.deck.clone().into_iter().filter(|y|
+        ! action_cards_to_discard.clone().into_iter().filter(|z|
+          z.actions.is_some()).collect::<Vec<Card>>().contains(y)));
+      ! new_hand.into_iter().take(7).filter(|y| ! state.hand.clone().contains(& y)).collect::<Vec<Card>>().contains(& x)
+    }).collect::<Vec<Card>>(),
+    discard: {
+      let mut new_discard = state.discard.clone();
+      new_discard.extend({
+        let mut new_hand = state.hand.clone();
+        new_hand.extend(state.deck.clone().into_iter().filter(|y|
+          ! action_cards_to_discard.clone().into_iter().filter(|z|
+            z.actions.is_some()).collect::<Vec<Card>>().contains(y)));
+        new_hand.into_iter().take(7).filter(|y| ! state.hand.clone().contains(& y))
+      });
+      new_discard
+    },
     actions_remaining: state.actions_remaining,
     extra_coins: state.extra_coins,
     purchases_remaining: state.purchases_remaining
