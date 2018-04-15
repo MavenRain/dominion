@@ -1,388 +1,48 @@
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Action {
-  GainCards(i8),
-  GainCardUpToCost(i8),
-  GainActions(i8),
-  GainCoins(i8),
-  GainBuys(i8),
-  GainSilverOntoDeck,
-  DiscardTopCardWithOptionToPlayIfAction,
-  PlayActionFromHandTwice,
-  TrashCardForCardCosting(i8),
-  DiscardCardsForEmptySupplyPiles(i8),
-  GainCardToHandCosting(i8),
-  PutCardFromHandOntoDeck,
-  DiscardAnyNumberOfCardsAndThenDrawThatMany,
-  TrashUpToFourCardsFromHand,
-  EachOtherPlayerDrawsCard,
-  PutCardFromDiscardOntoDeck,
-  DrawToSevenCardsDiscardingDrawnActionsAtWillAndDiscardingThemAfterward,
-  GainCoinIfSilverPlayed,
-  TrashTreasureForTreasureCosting(i8),
-  TrashCopper
+  GainCards(fn(State, usize) -> State, usize),
+  GainCardUpToCost(fn(State, Card, i8) -> State, i8),
+  GainActions(fn(State, i8) -> State, i8),
+  GainBuys(fn(State, i8) -> State, i8),
+  GainCoins(fn(State, i8) -> State, i8),
+  GainSilverOntoDeck(fn(State) -> State),
+  DiscardTopCardWithOptionToPlayIfAction(fn(State) -> (State, Option<Card>)),
+  PlayActionFromHandTwice(fn(State, Card) -> State),
+  TrashCardForCardCosting(fn(State, Card, Card, i8) -> State, i8),
+  DiscardCardsForEmptySupplyPiles(fn(State, usize) -> State, usize),
+  GainCardToHandCosting(fn(State, Card, i8) -> State, i8),
+  PutCardFromHandOntoDeck(fn(State, Card) -> State),
+  DiscardAnyNumberOfCardsAndThenDrawThatMany(fn(State, usize) -> State),
+  TrashUpToFourCardsFromHand(fn(State, Vec<Card>) -> State),
+  EachOtherPlayerDrawsCard(fn(State, usize) -> State),
+  PutCardFromDiscardOntoDeck(fn(State, Card) -> State),
+  DrawToSevenCardsDiscardingDrawnActionsAtWillAndDiscardingThemAfterward(fn(State, Vec<Card>) -> State),
+  GainCoinIfSilverPlayed(fn(State) -> State),
+  TrashTreasureForTreasureCosting(fn(State, Card, Card, i8) -> State, i8),
+  TrashCopper(fn(State) -> State),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Attack {
-  Curse,
-  RevealTopTwoOfDeckAndTrashRevealedNonCopperTreasureThenDiscardRest,
-  RevealVictoryCardFromHandAndPutOntoDeckIfThere,
-  DiscardDownToThreeCards
+  Curse(fn(Vec<State>) -> Vec<State>),
+  RevealTopTwoOfDeckAndTrashRevealedNonCopperTreasureThenDiscardRest(fn(State) -> State),
+  RevealVictoryCardFromHandAndPutOntoDeckIfThere(fn(State, Card) -> State),
+  EachOtherPlayerDiscardsDownToThreeCardsIfNoMoatInHand(fn(State, Vec<Card>) -> State)
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Effect {
+  Positive(Action),
+  Neutral(Action),
+  Negative(Attack)
 }
 
 #[derive(Clone, Debug)]
 struct Card {
   cost: i8,
   points: i8,
-  actions: Option<Vec<Action>>,
+  effects: Option<Vec<Effect>>,
   value: i8,
-  attack: Option<Attack>
-}
-
-fn action_vec_compare(va: &[Action], vb: &[Action]) -> bool {
-    (va.len() == vb.len()) &&
-    va.iter().zip(vb).all(|(a,b)| * a == * b)
-}
-
-impl PartialEq for Card {
-  fn eq(& self, other: & Card) -> bool {
-    self.cost == other.cost &&
-    self.points == other.points &&
-    match (self.actions.clone(), other.actions.clone()) {
-      (None, None) => true,
-      (Some(selfactions), Some(otheractions)) => action_vec_compare(& selfactions, & otheractions),
-      _ => false
-    } &&
-    self.value == other.value &&
-    match (self.attack.clone(), other.attack.clone()) {
-      (None, None) => true,
-      (Some(selfattack), Some(otherattack)) => selfattack == otherattack,
-      _ => false
-    }
-  }
-}
-
-impl Eq for Card {}
-
-fn gold() -> Card {
-  Card {
-    cost: 6,
-    points: 0,
-    actions: None,
-    value: 3,
-    attack: None
-  }
-}  
-
-fn estate() -> Card {
-  Card {
-    cost: 2,
-    points: 1,
-    actions: None,
-    value: 0,
-    attack: None
-  }
-}
-
-fn province() -> Card {
-  Card {
-    cost: 8,
-    points: 6,
-    actions: None,
-    value: 0,
-    attack: None
-  }
-}
-
-fn gardens(cards: i8) -> Card {
-  Card {
-    cost: 4,
-    points: cards / 10,
-    actions: None,
-    value: 0,
-    attack: None
-  }
-}
-
-fn duchy() -> Card {
-  Card {
-    cost: 5,
-    points: 3,
-    actions: None,
-    value: 0,
-    attack: None
-  }
-}
-
-fn workshop() -> Card {
-  Card {
-    cost: 3,
-    points: 0,
-    actions: Some(vec![Action::GainCardUpToCost(4)]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn witch() -> Card {
-  Card {
-    cost: 5,
-    points: 0,
-    actions: Some(vec![Action::GainCards(2)]),
-    value: 0,
-    attack: Some(Attack::Curse)
-  }
-}
-
-fn village() -> Card {
-  Card {
-    cost: 3,
-    points: 0,
-    actions: Some(vec![Action::GainCards(1), Action::GainActions(2)]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn curse() -> Card {
-  Card {
-    cost: 0,
-    points: -1,
-    actions: None,
-    value: 0,
-    attack: None
-  }
-}
-
-fn vassal() -> Card {
-  Card {
-    cost: 3,
-    points: 0,
-    actions: Some(vec![Action::GainCoins(2), Action::DiscardTopCardWithOptionToPlayIfAction]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn throne_room() -> Card {
-  Card {
-    cost: 4,
-    points: 0,
-    actions: Some(vec![Action::PlayActionFromHandTwice]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn smithy() -> Card {
-  Card {
-    cost: 4,
-    points: 0,
-    actions: Some(vec![Action::GainCards(3)]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn remodel(card: Card) -> Card {
-  Card {
-    cost: 4,
-    points: 0,
-    actions: Some(vec![Action::TrashCardForCardCosting(card.cost + 2)]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn poacher(empty_supply_piles: i8) -> Card {
-  Card {
-    cost: 4,
-    points: 0,
-    actions: Some(vec![Action::GainCards(1), Action::GainActions(1), Action::GainCoins(1),
-      Action::DiscardCardsForEmptySupplyPiles(empty_supply_piles)]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn artisan() -> Card {
-  Card {
-    cost: 6,
-    points: 0,
-    actions: Some(vec![Action::GainCardToHandCosting(5), Action::PutCardFromHandOntoDeck]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn bandit() -> Card {
-  Card {
-    cost: 5,
-    points: 0,
-    actions: Some(vec![Action::GainCoins(1)]),
-    value: 0,
-    attack: Some(Attack::RevealTopTwoOfDeckAndTrashRevealedNonCopperTreasureThenDiscardRest)
-  }
-}
-
-fn bureaucrat() -> Card {
-  Card {
-    cost: 4,
-    points: 0,
-    actions: Some(vec![Action::PutCardFromHandOntoDeck]),
-    value: 0,
-    attack: Some(Attack::RevealVictoryCardFromHandAndPutOntoDeckIfThere)
-  }
-}
-
-fn cellar() -> Card {
-  Card {
-    cost: 2,
-    points: 0,
-    actions: Some(vec![Action::GainActions(1), Action::DiscardAnyNumberOfCardsAndThenDrawThatMany]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn chapel() -> Card {
-  Card {
-    cost: 2,
-    points: 0,
-    actions: Some(vec![Action::TrashUpToFourCardsFromHand]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn council_room() -> Card {
-  Card {
-    cost: 5,
-    points: 0,
-    actions: Some(vec![Action::GainCards(4), Action::GainBuys(1), Action::EachOtherPlayerDrawsCard]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn copper() -> Card {
-  Card {
-    cost: 0,
-    points: 0,
-    actions: None,
-    value: 1,
-    attack: None
-  }
-}
-
-fn festival() -> Card {
-  Card {
-    cost: 5,
-    points: 0,
-    actions: Some(vec![Action::GainActions(2), Action::GainBuys(1), Action::GainCoins(2)]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn harbinger() -> Card {
-  Card {
-    cost: 3,
-    points: 0,
-    actions: Some(vec![Action::PutCardFromDiscardOntoDeck]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn laboratory() -> Card {
-  Card {
-    cost: 5,
-    points: 0,
-    actions: Some(vec![Action::GainCards(2), Action::GainActions(1)]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn library() -> Card {
-  Card {
-    cost: 5,
-    points: 0,
-    actions: Some(vec![Action::DrawToSevenCardsDiscardingDrawnActionsAtWillAndDiscardingThemAfterward]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn market() -> Card {
-  Card {
-    cost: 5,
-    points: 0,
-    actions: Some(vec![Action::GainCards(1), Action::GainActions(1), Action::GainBuys(1), Action::GainCoins(1)]),
-    value: 0, 
-    attack: None
-  }
-}
-
-fn merchant() -> Card {
-  Card {
-    cost: 3,
-    points: 0,
-    actions: Some(vec![Action::GainCoinIfSilverPlayed]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn militia() -> Card {
-  Card {
-    cost: 4,
-    points: 0,
-    actions: None,
-    value: 0,
-    attack: Some(Attack::DiscardDownToThreeCards)
-  }
-}
-
-fn mine(treasure: Card) -> Card {
-  Card {
-    cost: 5,
-    points: 0,
-    actions: Some(vec![Action::TrashTreasureForTreasureCosting(treasure.cost + 3)]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn moat() -> Card {
-  Card {
-    cost: 2,
-    points: 0,
-    actions: Some(vec![Action::GainCards(2)]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn moneylender() -> Card {
-  Card {
-    cost: 4,
-    points: 0,
-    actions: Some(vec![Action::TrashCopper, Action::GainCoins(3)]),
-    value: 0,
-    attack: None
-  }
-}
-
-fn silver() -> Card {
-  Card {
-    cost: 3,
-    points: 0,
-    actions: None,
-    value: 2,
-    attack: None
-  }
 }
 
 struct State {
@@ -405,24 +65,333 @@ impl State {
   }
 }
 
-enum ActionNext {
-  GainCards(fn(State, usize) -> State),
-  GainCardsUpToCost(fn(State, Card, i8) -> State),
-  LoseAction(fn(State) -> State),
-  GainActions(fn(State, i8) -> State),
-  LoseExtraCoins(fn(State) -> State),
-  GainExtraCoins(fn(State, i8) -> State),
-  CompletePurchase(fn(State) -> State),
-  AddPurchases(fn(State, i8) -> State),
-  GainSilverOntoDeck(fn(State) -> State),
-  DiscardTopCardWithOptionToPlayIfAction(fn(State) -> (State, Option<Card>)),
-  PlayActionFromHandTwice(fn(State, Card) -> State),
-  TrashCardForCardCosting(fn(State, Card, Card, i8) -> State),
-  DiscardCardsForEmptySupplyPiles(fn(State, usize) -> State),
-  GainCardToHandCosting(fn(State, Card, i8) -> State),
-  PutCardFromHandOntoDeck(fn(State, Card) -> State),
-  DiscardAnyNumberOfCardsAndThenDrawThatMany(fn(State, usize) -> State),
-  TrashUpToFourCardsFromHand(fn(State, Vec<Card>) -> State)
+fn effect_vec_compare(va: &[Effect], vb: &[Effect]) -> bool {
+    (va.len() == vb.len()) &&
+    va.iter().zip(vb).all(|(a,b)| * a == * b)
+}
+
+impl PartialEq for Card {
+  fn eq(& self, other: & Card) -> bool {
+    self.cost == other.cost &&
+    self.points == other.points &&
+    match (self.effects.clone(), other.effects.clone()) {
+      (None, None) => true,
+      (Some(selfeffects), Some(othereffects)) => effect_vec_compare(& selfeffects, & othereffects),
+      _ => false
+    } &&
+    self.value == other.value
+  }
+}
+
+impl Eq for Card {}
+
+fn gold() -> Card {
+  Card {
+    cost: 6,
+    points: 0,
+    effects: None,
+    value: 3
+  }
+}  
+
+fn estate() -> Card {
+  Card {
+    cost: 2,
+    points: 1,
+    effects: None,
+    value: 0
+  }
+}
+
+fn province() -> Card {
+  Card {
+    cost: 8,
+    points: 6,
+    effects: None,
+    value: 0
+  }
+}
+
+fn gardens(cards: i8) -> Card {
+  Card {
+    cost: 4,
+    points: cards / 10,
+    effects: None,
+    value: 0
+  }
+}
+
+fn duchy() -> Card {
+  Card {
+    cost: 5,
+    points: 3,
+    effects: None,
+    value: 0
+  }
+}
+
+fn workshop() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCardUpToCost(gain_card_up_to_cost, 4))]),
+    value: 0
+  }
+}
+
+fn witch() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCards(gain_cards, 2)),
+      Effect::Negative(Attack::Curse(curse_each_player))]),
+    value: 0
+  }
+}
+
+fn village() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCards(gain_cards, 1)),
+      Effect::Positive(Action::GainActions(gain_actions, 2))]),
+    value: 0
+  }
+}
+
+fn curse() -> Card {
+  Card {
+    cost: 0,
+    points: -1,
+    effects: None,
+    value: 0
+  }
+}
+
+fn vassal() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCoins(gain_coins, 2)),
+      Effect::Positive(Action::DiscardTopCardWithOptionToPlayIfAction(discard_top_card_with_option_to_play_if_action))]),
+    value: 0
+  }
+}
+
+fn throne_room() -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::PlayActionFromHandTwice(play_action_from_hand_twice))]),
+    value: 0
+  }
+}
+
+fn smithy() -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCards(gain_cards, 3))]),
+    value: 0
+  }
+}
+
+fn remodel(card: Card) -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::TrashCardForCardCosting(trash_card_for_card_costing,
+      card.cost + 2))]),
+    value: 0
+  }
+}
+
+fn poacher(empty_supply_piles: usize) -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCards(gain_cards, 1)),
+      Effect::Positive(Action::GainActions(gain_actions, 1)),
+      Effect::Positive(Action::GainCoins(gain_coins, 1)),
+      Effect::Neutral(Action::DiscardCardsForEmptySupplyPiles(discard_cards_for_empty_supply_piles,
+        empty_supply_piles))]),
+    value: 0
+  }
+}
+
+fn artisan() -> Card {
+  Card {
+    cost: 6,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCardToHandCosting(gain_card_to_hand_costing, 5)),
+      Effect::Positive(Action::PutCardFromHandOntoDeck(put_card_from_hand_onto_deck))]),
+    value: 0
+  }
+}
+
+fn bandit() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCoins(gain_coins, 1)),
+      Effect::Negative(Attack::RevealTopTwoOfDeckAndTrashRevealedNonCopperTreasureThenDiscardRest(reveal_top_two_cards_of_deck_trashing_single_non_copper_treasure_then_discarding_rest))]),
+    value: 0
+  }
+}
+
+fn bureaucrat() -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::PutCardFromHandOntoDeck(put_card_from_hand_onto_deck)),
+      Effect::Negative(Attack::RevealVictoryCardFromHandAndPutOntoDeckIfThere(reveal_victory_card_from_hand_and_put_on_deck_if_there))]),
+    value: 0
+  }
+}
+
+fn cellar() -> Card {
+  Card {
+    cost: 2,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainActions(gain_actions, 1)),
+      Effect::Positive(Action::DiscardAnyNumberOfCardsAndThenDrawThatMany(discard_any_number_of_cards_and_then_draw_that_many))]),
+    value: 0
+  }
+}
+
+fn chapel() -> Card {
+  Card {
+    cost: 2,
+    points: 0,
+    effects: Some(vec![Effect::Neutral(Action::TrashUpToFourCardsFromHand(trash_up_to_four_cards_from_hand))]),
+    value: 0
+  }
+}
+
+fn council_room() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCards(gain_cards, 4)),
+      Effect::Positive(Action::GainBuys(gain_buys, 1)),
+      Effect::Neutral(Action::EachOtherPlayerDrawsCard(gain_cards))]),
+    value: 0
+  }
+}
+
+fn copper() -> Card {
+  Card {
+    cost: 0,
+    points: 0,
+    effects: None,
+    value: 1
+  }
+}
+
+fn festival() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainActions(gain_actions, 2)),
+      Effect::Positive(Action::GainBuys(gain_buys, 1)),
+      Effect::Positive(Action::GainCoins(gain_coins, 2))]),
+    value: 0
+  }
+}
+
+fn harbinger() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::PutCardFromDiscardOntoDeck(put_card_from_discard_onto_deck))]),
+    value: 0
+  }
+}
+
+fn laboratory() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCards(gain_cards, 2)),
+      Effect::Positive(Action::GainActions(gain_actions, 1))]),
+    value: 0
+  }
+}
+
+fn library() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::DrawToSevenCardsDiscardingDrawnActionsAtWillAndDiscardingThemAfterward(draw_to_seven_cards_discarding_drawn_actions_at_will_then_discarding_them))]),
+    value: 0
+  }
+}
+
+fn market() -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCards(gain_cards, 1)),
+      Effect::Positive(Action::GainActions(gain_actions, 1)),
+      Effect::Positive(Action::GainBuys(gain_buys, 1)),
+      Effect::Positive(Action::GainCoins(gain_coins, 1))]),
+    value: 0
+  }
+}
+
+fn merchant() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCoinIfSilverPlayed(gain_coin_if_silver_played))]),
+    value: 0
+  }
+}
+
+fn militia() -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    effects: Some(vec![Effect::Negative(Attack::EachOtherPlayerDiscardsDownToThreeCardsIfNoMoatInHand(discard_down_to_three_cards_if_no_moat_in_hand))]),
+    value: 0
+  }
+}
+
+fn mine(treasure: Card) -> Card {
+  Card {
+    cost: 5,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::TrashTreasureForTreasureCosting(trash_treasure_for_treasure_costing, treasure.cost + 3))]),
+    value: 0
+  }
+}
+
+fn moat() -> Card {
+  Card {
+    cost: 2,
+    points: 0,
+    effects: Some(vec![Effect::Positive(Action::GainCards(gain_cards, 2))]),
+    value: 0
+  }
+}
+
+fn moneylender() -> Card {
+  Card {
+    cost: 4,
+    points: 0,
+    effects: Some(vec![Effect::Neutral(Action::TrashCopper(trash_copper)),
+      Effect::Positive(Action::GainCoins(gain_coins, 3))]),
+    value: 0
+  }
+}
+
+fn silver() -> Card {
+  Card {
+    cost: 3,
+    points: 0,
+    effects: None,
+    value: 2
+  }
 }
 
 fn gain_cards(state: State, cards: usize) -> State {
@@ -488,7 +457,7 @@ fn lose_extra_coins(state: State) -> State {
   }
 }
 
-fn gain_extra_coins(state: State, coins: i8) -> State {
+fn gain_coins(state: State, coins: i8) -> State {
   State {
     hand: state.hand,
     deck: state.deck,
@@ -496,6 +465,17 @@ fn gain_extra_coins(state: State, coins: i8) -> State {
     actions_remaining: state.actions_remaining,
     extra_coins: state.extra_coins + coins,
     purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn gain_buys(state: State, buys: i8) -> State {
+  State {
+    hand: state.hand,
+    deck: state.deck,
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining + buys
   }
 }
 
@@ -554,28 +534,27 @@ fn discard_top_card_with_option_to_play_if_action(state: State) -> (State, Optio
 }
 
 fn play_action_from_hand_twice(state: State, card: Card) -> State {
-  match state.hand.clone().into_iter().find(|x| x.to_owned() == card) {
+  match state.hand.clone().into_iter().find(|x| * x == card) {
     None => state,
     _ => {
       let new_card = Card {
         cost: card.cost,
         points: card.points,
-        actions: {
-          if let Some(mut new_actions) = card.actions.clone() {
-            let new_actions_clone = new_actions.clone();
-            new_actions.extend(new_actions_clone);
-            Some(new_actions)
+        effects: {
+          if let Some(mut new_effects) = card.effects.clone() {
+            let new_effects_clone = new_effects.clone();
+            new_effects.extend(new_effects_clone);
+            Some(new_effects)
           }
-          else { card.actions.clone() }
+          else { card.effects.clone() }
         },
-        value: card.value,
-        attack: card.attack.clone()
+        value: card.value
       };
       State {
         hand: {
-              let mut new_hand = state.hand.clone().into_iter().filter(|x| x.to_owned() !=
+              let mut new_hand = state.hand.clone().into_iter().filter(|x| * x !=
                 card).collect::<Vec<Card>>();
-              new_hand.extend(vec![new_card]);
+              new_hand.push(new_card);
               new_hand
         },
         deck: state.deck,
@@ -593,8 +572,8 @@ fn trash_card_for_card_costing(state: State, trash_card: Card, new_card: Card, c
   else {
     State {
       hand: {
-        let mut new_hand = state.hand.into_iter().filter(|x| x.to_owned() != trash_card).collect::<Vec<Card>>();
-        new_hand.extend(vec![new_card]);
+        let mut new_hand = state.hand.into_iter().filter(|x| * x != trash_card).collect::<Vec<Card>>();
+        new_hand.push(new_card);
         new_hand
       },
       deck: state.deck,
@@ -625,7 +604,7 @@ fn gain_card_to_hand_costing(state: State, card: Card, cost: i8) -> State {
   State {
     hand: if card.cost > cost { state.hand } else {
       let mut new_hand = state.hand;
-      new_hand.extend(vec![card]);
+      new_hand.push(card);
       new_hand
     },
     deck: state.deck,
@@ -639,10 +618,10 @@ fn gain_card_to_hand_costing(state: State, card: Card, cost: i8) -> State {
 fn put_card_from_hand_onto_deck(state: State, card: Card) -> State {
   if ! state.hand.contains(& card) { state } else {
     State {
-      hand: state.hand.into_iter().filter(|x| x.to_owned() != card).collect::<Vec<Card>>(),
+      hand: state.hand.into_iter().filter(|x| * x != card).collect::<Vec<Card>>(),
       deck: {
         let mut new_deck = state.deck;
-        new_deck.extend(vec![card]);
+        new_deck.push(card);
         new_deck
       },
       discard: state.discard,
@@ -708,7 +687,7 @@ fn put_card_from_discard_onto_deck(state: State, card: Card) -> State {
       new_deck.extend(vec![card.clone()]);
       new_deck
     },
-    discard: state.discard.into_iter().filter(|x| x.to_owned() != card).collect::<Vec<Card>>(),
+    discard: state.discard.into_iter().filter(|x| * x != card).collect::<Vec<Card>>(),
     actions_remaining: state.actions_remaining,
     extra_coins: state.extra_coins,
     purchases_remaining: state.purchases_remaining
@@ -748,9 +727,9 @@ fn trash_treasure_for_treasure_costing(state: State, trashed_treasure: Card,
 fn trash_copper(state: State) -> State {
   State {
     hand: {
-      let remaining_coppers = state.hand.clone().into_iter().filter(|x| x.to_owned() == copper())
+      let remaining_coppers = state.hand.clone().into_iter().filter(|x| * x == copper())
         .skip(1).collect::<Vec<Card>>();
-      let mut new_hand = state.hand.clone().into_iter().filter(|x| x.to_owned() != copper())
+      let mut new_hand = state.hand.clone().into_iter().filter(|x| * x != copper())
         .collect::<Vec<Card>>();
       new_hand.extend(remaining_coppers);
       new_hand
@@ -771,7 +750,7 @@ fn draw_to_seven_cards_discarding_drawn_actions_at_will_then_discarding_them(
       let mut new_hand = state.hand.clone();
       new_hand.extend(state.deck.clone().into_iter().filter(|y|
         ! action_cards_to_discard.clone().into_iter().filter(|z|
-          z.actions.is_some()).collect::<Vec<Card>>().contains(y)));
+          z.effects.is_some()).collect::<Vec<Card>>().contains(y)));
       ! new_hand.into_iter().take(7).filter(|y| ! state.hand.clone().contains(& y)).collect::<Vec<Card>>().contains(& x)
     }).collect::<Vec<Card>>(),
     discard: {
@@ -780,9 +759,97 @@ fn draw_to_seven_cards_discarding_drawn_actions_at_will_then_discarding_them(
         let mut new_hand = state.hand.clone();
         new_hand.extend(state.deck.clone().into_iter().filter(|y|
           ! action_cards_to_discard.clone().into_iter().filter(|z|
-            z.actions.is_some()).collect::<Vec<Card>>().contains(y)));
+            z.effects.is_some()).collect::<Vec<Card>>().contains(y)));
         new_hand.into_iter().take(7).filter(|y| ! state.hand.clone().contains(& y))
       });
+      new_discard
+    },
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn curse_each_player(states: Vec<State>) -> Vec<State> {
+  states.into_iter().map(|x| State {
+    hand: {
+      let mut new_hand = x.hand;
+      new_hand.push(curse());
+      new_hand
+    },
+    deck: x.deck,
+    discard: x.discard,
+    actions_remaining: x.actions_remaining,
+    extra_coins: x.extra_coins,
+    purchases_remaining: x.purchases_remaining
+  }).collect::<Vec<State>>()
+}
+
+fn reveal_top_two_cards_of_deck_trashing_single_non_copper_treasure_then_discarding_rest(state: State) -> State {
+  State {
+    hand: state.hand,
+    deck: state.deck.clone().into_iter().skip(2).collect::<Vec<Card>>(),
+    discard: {
+      let mut new_discard = state.discard;
+      let first_draw = state.deck.clone().into_iter().nth(0);
+      let second_draw = state.deck.clone().into_iter().nth(1);
+      match (first_draw, second_draw) {
+        (Some(ref first), Some(ref second)) if (* first == silver() || * first == gold()) &&
+          * second != silver() && * second != gold() => new_discard.push(second.to_owned()),
+        (Some(ref first), Some(ref second)) if * first != silver() && * first != gold() &&
+          * second != silver() && * second != gold() => new_discard.extend(vec![first.to_owned(), second.to_owned()]),
+        (Some(ref first), Some(ref second)) if * first != silver() && * first != gold() &&
+          (* second == silver() || * second == gold()) => new_discard.push(first.to_owned()),
+        (Some(ref first), _) if * first != silver() && * first != gold() => new_discard.push(first.to_owned()),
+        _ => () 
+      }
+      new_discard
+    },
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn reveal_victory_card_from_hand_and_put_on_deck_if_there(state: State, card: Card) -> State {
+  State {
+    hand: match & card.clone() {
+      ref victory_card if (* victory_card).points > 0 => state.hand.clone().into_iter()
+        .filter(|x| x != * victory_card).collect::<Vec<Card>>(),
+      _ => state.hand
+    },
+    deck: match & card.clone() {
+      ref victory_card if (* victory_card).points > 0 => {
+        let mut new_deck = state.deck.clone();
+        new_deck.push((* victory_card).to_owned());
+        new_deck
+      },
+      _ => state.deck
+    },
+    discard: state.discard,
+    actions_remaining: state.actions_remaining,
+    extra_coins: state.extra_coins,
+    purchases_remaining: state.purchases_remaining
+  }
+}
+
+fn discard_down_to_three_cards_if_no_moat_in_hand(state: State, cards_to_discard: Vec<Card>) -> State {
+  State {
+    hand: if state.hand.clone().contains(& moat()) { state.hand.clone() } else {
+      let proposed_hand = state.hand.clone().into_iter().filter(|x|
+        ! cards_to_discard.clone().contains(& x)).collect::<Vec<Card>>();
+      let number_of_cards_to_replenish = 3 - proposed_hand.clone().iter().len();
+      let mut new_hand = proposed_hand;
+      new_hand.extend(cards_to_discard.clone().into_iter().take(number_of_cards_to_replenish));
+      new_hand
+    },
+    deck: state.deck,
+    discard: {
+      let mut new_discard = state.discard;
+      let proposed_hand = state.hand.into_iter().filter(|x|
+        ! cards_to_discard.clone().contains(& x)).collect::<Vec<Card>>();
+      let number_of_cards_to_replenish = 3 - proposed_hand.clone().iter().len();
+      new_discard.extend(cards_to_discard.into_iter().skip(number_of_cards_to_replenish));
       new_discard
     },
     actions_remaining: state.actions_remaining,
@@ -801,5 +868,5 @@ fn main() {
     purchases_remaining: 0
   };
   state.summarize();
-  let actions = vec![ActionNext::GainCards(gain_cards)];
+  let _effects = vec![Effect::Positive(Action::GainCards(gain_cards, 1))];
 }
