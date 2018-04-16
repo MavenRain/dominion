@@ -3,4 +3,8 @@ name = "dominion"
 version = "0.1.0"
 authors = ["oobi <not_root@expedia.com>"]
 
+[lib]
+name = "dominion"
+path ="src/lib.rs"
+
 [dependencies]
