@@ -8,3 +8,8 @@ name = "dominion"
 path ="src/lib.rs"
 
 [dependencies]
+
+[[bin]]
+name = "driver"
+test = false
+doc = false
